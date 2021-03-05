@@ -57,6 +57,7 @@ object DITAConfigConstants {
   var KNN_EPSILON: Double = 1e-6
   var KNN_MAX_GLOBAL_ITERATION = 3
   val KNN_MAX_SAMPLING_RATE = 0.1
+  var kNN_LOCAL_THRESHOLD = Double.MaxValue
 
   /*
   def loadFromConfig(confFile: String): Unit = {

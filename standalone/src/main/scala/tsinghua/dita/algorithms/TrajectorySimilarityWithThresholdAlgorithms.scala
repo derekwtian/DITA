@@ -187,7 +187,6 @@ object TrajectorySimilarityWithThresholdAlgorithms {
       start = System.currentTimeMillis()
       val (transCost, compCost) = getCost(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, threshold)
       end = System.currentTimeMillis()
-      logWarning(s"Computing cost time: ${(end - start) / 1000}s")
 
       // construct the graph
       start = System.currentTimeMillis()
@@ -237,7 +236,6 @@ object TrajectorySimilarityWithThresholdAlgorithms {
       // assert(left2RightEdges.forall(t => !right2LeftEdges.contains((t._2, t._1))))
       // assert(right2LeftEdges.forall(t => !left2RightEdges.contains((t._2, t._1))))
       end = System.currentTimeMillis()
-      logWarning(s"Computing optimal graph time: ${(end - start) / 1000}s")
 
       // get balancing partitions
       val leftBalancingPartitions = balancingPartitions
@@ -358,7 +356,6 @@ object TrajectorySimilarityWithThresholdAlgorithms {
       val totalCost = (0 until totalNumPartitions).map(partitionId1 =>
         getTotalCostForPartition(partitionId1, allEdges, edgeDirection)
       ).toArray
-      logWarning(s"Initial maximum total cost: ${totalCost.max}")
 
       // greedy algorithm for chaning edge direction
       val loop = new Breaks
@@ -400,7 +397,6 @@ object TrajectorySimilarityWithThresholdAlgorithms {
           }
         }
       }
-      logWarning(s"Maximum total cost: ${totalCost.max}")
 
       // balancing
       val sortedTotalCost = totalCost.sorted
