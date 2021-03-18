@@ -92,6 +92,8 @@ object Experiment {
             case "-knnIterLT" => DITAConfigConstants.KNN_MAX_LOCAL_ITERATION = args(i+1).toInt
             case "-pivotC" => DITAConfigConstants.LOCAL_INDEXED_PIVOT_COUNT = args(i+1).toInt
             case "-knnLT" => DITAConfigConstants.kNN_LOCAL_THRESHOLD = args(i+1).toDouble
+            case "-sampleRate" => DITAConfigConstants.BALANCING_SAMPLE_RATE = args(i+1).toDouble
+            case "-kNNsampleRate" => DITAConfigConstants.KNN_MAX_SAMPLING_RATE = args(i+1).toDouble
             case "-mrs" => mrs = args(i+1)
             case e => {println(s"wrong parameter $e ..."); return}
           }
@@ -121,6 +123,8 @@ object Experiment {
       conf.setMaster(master)
     }
     sc = new SparkContext(conf)
+
+    println(filePath, queryPath, distanceFunction)
 
     val trajs = //spark.sparkContext
     //.textFile("hdfs://master:9000"+filePath)

@@ -109,6 +109,7 @@ object TrajectorySimilarityWithKNNAlgorithms {
       val answerRDD = TrajectorySimilarityWithThresholdAlgorithms.SimpleDistributedJoin
         .join(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, threshold)
       //logWarning(s"Answer Count: ${answerRDD.count()}")
+      println(s"Answer Count: ${answerRDD.count()}")
       sparkContext.parallelize(answerRDD.takeOrdered(count))
     }
 

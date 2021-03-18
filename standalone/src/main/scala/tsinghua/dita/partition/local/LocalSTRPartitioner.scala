@@ -60,7 +60,9 @@ object LocalSTRPartitioner {
     val partitioner = new LocalSTRPartitioner(expectedNumPartitions,
       dimension, maxEntriesPerNode, data)
     val shuffled = data.groupBy(p => partitioner.getPartition(p._1))
-    ((0 until partitioner.numPartitions).map(i =>
-      shuffled.getOrElse(i, Array.empty)).toArray, partitioner)
+    ((0 until partitioner.numPartitions).map(i => {
+      println(s"nonEmpty: $i -> ${shuffled.contains(i)}")
+      shuffled.getOrElse(i, Array.empty)
+    }).toArray, partitioner)
   }
 }

@@ -196,6 +196,8 @@ object LocalTriePartitioner {
       DITAConfigConstants.LOCAL_PIVOT_NUM_PARTITIONS
     }
 
+    println(s"level: $level, numPartitions: $numPartitions")
+
     if (rdd.length <= DITAConfigConstants.LOCAL_MIN_NODE_SIZE) {
       return new EmptyLocalTriePartitioner(level, rdd.length, rdd.map(_._2).toList)
     }
