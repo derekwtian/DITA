@@ -21,11 +21,11 @@ import tsinghua.dita.common.shape.{Point, Rectangle}
 
 import scala.collection.mutable.ArrayBuffer
 
-case class Trajectory(points: Array[Point]) {
+case class Trajectory(points: Array[Point], tid: Long) {
   require(points.nonEmpty)
 
   override def toString: String = {
-    s"Trajectory(points = ${points.mkString(",")}"
+    s"Trajectory(id = $tid, points = ${points.mkString(";")}"
   }
 
   @transient

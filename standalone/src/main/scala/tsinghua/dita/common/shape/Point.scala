@@ -79,9 +79,9 @@ case class Point(coord: Array[Double]) extends Shape {
   def shift(d: Double): Point = Point(coord.map(x => x + d))
 
   override def toString: String = {
-    var s = "POINT("
+    var s = ""
     s += coord(0).toString
     for (i <- 1 until coord.length) s += "," + coord(i)
-    s + ")"
+    s
   }
 }

@@ -9,12 +9,14 @@ import tsinghua.dita.common.shape.{Point, Rectangle}
 import tsinghua.dita.common.trajectory.{Trajectory, TrajectorySimilarity}
 import tsinghua.dita.rdd.TrieRDD
 
+import scala.collection.mutable.ArrayBuffer
+
 object Experiment {
 
   private def getTrajectory(line: (String, Long)): Trajectory = {
     val points = line._1.split(";").map(_.split(","))
       .map(x => Point(x.map(_.toDouble)))
-    Trajectory(points)
+    Trajectory(points, line._2)
   }
 
   case class TrajectoryRecord(id: Long, traj: Array[Array[Double]])
@@ -37,10 +39,11 @@ object Experiment {
   }
 
   var sc: SparkContext = null
-  var eachQueryLoopTimes = 5 // -step
+  var eachQueryLoopTimes = 1 // -step
+  var showResult = false
 
   def main(args: Array[String]): Unit = {
-    var filePath = "/ais_25/trajectory.txt" // -p
+    var filePath = "file:///Users/tianwei/Projects/data/dita_porto_small.txt" // -p
     var threshold = 0.05 // -t
     var sRange = "31.35387,-117.18512,31.44107,-117.15221" //-s
     var kValue = 50 //-k
@@ -50,18 +53,17 @@ object Experiment {
     var queryCenter = "31.35387,-117.18512" // -cen
     var radius = 0.01 // -r
     var master ="local[*]" //-m
-    var mrs = "4g"
+    var mrs = "8g"
     var lower = 6
     var upper = 1000000
-    var queryPath = ""
+    var queryPath = "file:///Users/tianwei/Projects/data/dita_porto_small.txt"
     var thresholds = Array(0.01, 0.02, 0.05, 0.1, 0.2, 0.4)
     var ks = Array(1, 2, 5, 10, 20, 50)
     var queryInfo = Map[String, Int]()
-    queryInfo += ("sim"->0)
-    queryInfo += ("simJoin"->0)
-    queryInfo += ("knnSim"->0)
+//    queryInfo += ("sim"->0)
+//    queryInfo += ("simJoin"->0)
+//    queryInfo += ("knnSim"->0)
     queryInfo += ("knnSimJoin"->0)
-    var showResult = 0
 
     if (args.length > 0) {
       if (args.length % 2 == 0) {
@@ -87,7 +89,7 @@ object Experiment {
               qs.foreach(q=> {
                 queryInfo += (q->0)
               })
-            case "-show" => showResult = args(i+1).toInt
+            case "-show" => showResult = args(i+1).toBoolean
             case "-knnIterGT" => DITAConfigConstants.KNN_MAX_GLOBAL_ITERATION = args(i+1).toInt
             case "-knnIterLT" => DITAConfigConstants.KNN_MAX_LOCAL_ITERATION = args(i+1).toInt
             case "-pivotC" => DITAConfigConstants.LOCAL_INDEXED_PIVOT_COUNT = args(i+1).toInt
@@ -253,7 +255,7 @@ object Experiment {
   }
 
   def simProcessing(q: TrajectoryRecord, rdd1: TrieRDD, simFunc: String, t: Double): Double = {
-    val qt = Trajectory(q.traj.map(Point(_)))
+    val qt = Trajectory(q.traj.map(Point(_)), q.id)
     val thresholdSearch = TrajectorySimilarityWithThresholdAlgorithms.DistributedSearch
     var res: Array[(Trajectory, Double)] = null
     val times = Array.ofDim[Long](eachQueryLoopTimes)
@@ -270,7 +272,7 @@ object Experiment {
   }
 
   def kNNProcessing(q: TrajectoryRecord, rdd1: TrieRDD, simFunc: String, k: Int): Double = {
-    val qt = Trajectory(q.traj.map(Point(_)))
+    val qt = Trajectory(q.traj.map(Point(_)), q.id)
     val knnSearch = TrajectorySimilarityWithKNNAlgorithms.DistributedSearch
     var res: Array[(Trajectory, Double)] = null
     val times = Array.ofDim[Long](eachQueryLoopTimes)
@@ -281,6 +283,12 @@ object Experiment {
       times(i) = t1 - t0
     }
 
+    if (showResult) {
+      res.foreach(item => {
+        println(qt.tid, item._1, item._2)
+      })
+    }
+
     var str = s"${q.id},${qt.points.length},${res.length},${times.sum / eachQueryLoopTimes.toDouble},${times.min},${times.max},${times.sum}, "
     println(str + times.mkString(","))
     times.sum / eachQueryLoopTimes.toDouble
@@ -288,32 +296,34 @@ object Experiment {
 
   def tJoinProcessing(rdd1: TrieRDD, rdd2: TrieRDD, simFunc: String, t: Double): Double = {
     val thresholdJoin = TrajectorySimilarityWithThresholdAlgorithms.FineGrainedDistributedJoin
-    var res: Array[(Trajectory, Trajectory, Double)] = null
+    //var res: Array[(Trajectory, Trajectory, Double)] = null
+    var res = 0L
     val times = Array.ofDim[Long](eachQueryLoopTimes)
     for (i <- 0 until eachQueryLoopTimes) {
       val t0 = System.currentTimeMillis()
-      res = thresholdJoin.join(sc, rdd1, rdd2,  getSimFunc(simFunc), t).collect()
+      res = thresholdJoin.join(sc, rdd1, rdd2,  getSimFunc(simFunc), t).count()
       val t1 = System.currentTimeMillis()
       times(i) = t1 - t0
     }
 
-    var str = s"${res.length},${times.sum / eachQueryLoopTimes.toDouble},${times.min},${times.max},${times.sum}, "
+    var str = s"${res},${times.sum / eachQueryLoopTimes.toDouble},${times.min},${times.max},${times.sum}, "
     println(str + times.mkString(","))
     times.sum / eachQueryLoopTimes.toDouble
   }
 
   def kJoinProcessing(rdd1: TrieRDD, rdd2: TrieRDD, simFunc: String, k: Int): Double = {
     val knnJoin = TrajectorySimilarityWithKNNAlgorithms.DistributedJoin
-    var res: Array[(Trajectory, Trajectory, Double)] = null
+    //var res: Array[(Trajectory, Trajectory, Double)] = null
+    var res = 0L
     val times = Array.ofDim[Long](eachQueryLoopTimes)
     for (i <- 0 until eachQueryLoopTimes) {
       val t0 = System.currentTimeMillis()
-      res = knnJoin.join(sc, rdd1, rdd2, getSimFunc(simFunc), k).collect()
+      res = knnJoin.join(sc, rdd1, rdd2, getSimFunc(simFunc), k).count()
       val t1 = System.currentTimeMillis()
       times(i) = t1 - t0
     }
 
-    var str = s"${res.length},${times.sum / eachQueryLoopTimes.toDouble},${times.min},${times.max},${times.sum}, "
+    var str = s"${res},${times.sum / eachQueryLoopTimes.toDouble},${times.min},${times.max},${times.sum}, "
     println(str + times.mkString(","))
     times.sum / eachQueryLoopTimes.toDouble
   }

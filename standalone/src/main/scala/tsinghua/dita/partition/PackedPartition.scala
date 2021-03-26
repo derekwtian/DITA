@@ -26,7 +26,7 @@ case class PackedPartition(id: Int, data: Array[_ <: Any], indexes: Array[LocalI
   def getSample(sampleRate: Double): List[_ <: Any] = {
     val sampleSize = math.max((data.length * sampleRate).toInt,
       DITAConfigConstants.BALANCING_MIN_SAMPLE_SIZE)
-    println(s"sampleSize: $sampleSize, length: ${data.length}, isEqual: ${sampleSize == data.length}")
+    //println(s"sampleSize: $sampleSize, length: ${data.length}, isEqual: ${sampleSize == data.length}")
     Random.shuffle(data.toList).take(sampleSize)
   }
 }

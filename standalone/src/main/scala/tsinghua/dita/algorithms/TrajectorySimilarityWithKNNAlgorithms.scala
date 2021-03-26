@@ -104,13 +104,21 @@ object TrajectorySimilarityWithKNNAlgorithms {
     def join(sparkContext: SparkContext, leftTrieRDD: TrieRDD, rightTrieRDD: TrieRDD,
              distanceFunction: TrajectorySimilarity,
              count: Int): RDD[(Trajectory, Trajectory, Double)] = {
-      val threshold = getThreshold(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, count)
+      val threshold = getThreshold2(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, count)
       //logWarning(s"Threshold: $threshold")
-      val answerRDD = TrajectorySimilarityWithThresholdAlgorithms.SimpleDistributedJoin
-        .join(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, threshold)
+      println(s"Threshold: $threshold")
+      val answerRDD = TrajectorySimilarityWithThresholdAlgorithms.FineGrainedDistributedJoin
+        .join(sparkContext, leftTrieRDD, rightTrieRDD, distanceFunction, threshold).groupBy(_._1.tid)
       //logWarning(s"Answer Count: ${answerRDD.count()}")
       println(s"Answer Count: ${answerRDD.count()}")
-      sparkContext.parallelize(answerRDD.takeOrdered(count))
+//      answerRDD.collect().sortWith((s1, s2)=> {
+//        s1._1 < s2._1
+//      }).foreach(item => {
+//        println(item._1, item._2.size)
+//      })
+      answerRDD.flatMap(item => {
+        item._2.toArray.sorted(order).slice(0, count)
+      })
     }
 
     private def getThreshold(sparkContext: SparkContext,
@@ -139,13 +147,13 @@ object TrajectorySimilarityWithKNNAlgorithms {
       val partitionedRightSingleCandidatesRDD = ExactKeyPartitioner.partition(
         rightSingleCandidatesRDD, leftNumPartitions)
 
-      var finalThreshold = 1.0
+      var finalThreshold = Double.MaxValue
       var sampleRate = math.pow(10, -(DITAConfigConstants.KNN_MAX_GLOBAL_ITERATION - 1))
       for {_ <- 1 to DITAConfigConstants.KNN_MAX_GLOBAL_ITERATION} {
         val allThresholds = leftTrieRDD.packedRDD.zipPartitions(
           partitionedRightSingleCandidatesRDD.sample(true, sampleRate)) { case (partitionIter, trajectoryIter) =>
           getThresholdLocal(partitionIter, trajectoryIter, distanceFunction, count, finalThreshold)
-        }.collect().sorted.take(count)
+        }.collect().sorted
         if (allThresholds.nonEmpty) {
           finalThreshold = math.min(finalThreshold, allThresholds.last)
         }
@@ -154,6 +162,22 @@ object TrajectorySimilarityWithKNNAlgorithms {
 
       finalThreshold
     }
+
+    private def getThreshold2(sparkContext: SparkContext,
+                             leftTrieRDD: TrieRDD, rightTrieRDD: TrieRDD,
+                             distanceFunction: TrajectorySimilarity,
+                             count: Int): Double = {
+      val threshold = leftTrieRDD.packedRDD.map(packedPartition => {
+        packedPartition.getSample(DITAConfigConstants.KNN_MAX_SAMPLING_RATE)
+          .asInstanceOf[List[Trajectory]].map(trajectory => {
+          rightTrieRDD.packedRDD.mapPartitions(iter =>
+            getThresholdLocal(iter, Iterator(trajectory), distanceFunction, count, Double.MaxValue))
+            .collect().sorted.take(count).last
+        }).max
+      }).collect().max
+      threshold
+    }
+
   }
 
 }

@@ -12,7 +12,7 @@ object ExampleApp {
   private def getTrajectory(line: (String, Long)): Trajectory = {
     val points = line._1.split(";").map(_.split(","))
       .map(x => Point(x.map(_.toDouble)))
-    Trajectory(points)
+    Trajectory(points, line._2)
   }
 
   def main(args: Array[String]): Unit = {
