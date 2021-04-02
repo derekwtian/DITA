@@ -167,14 +167,25 @@ object TrajectorySimilarityWithKNNAlgorithms {
                              leftTrieRDD: TrieRDD, rightTrieRDD: TrieRDD,
                              distanceFunction: TrajectorySimilarity,
                              count: Int): Double = {
-      val threshold = leftTrieRDD.packedRDD.map(packedPartition => {
+      val trajs = leftTrieRDD.packedRDD.map(packedPartition => {
         packedPartition.getSample(DITAConfigConstants.KNN_MAX_SAMPLING_RATE)
-          .asInstanceOf[List[Trajectory]].map(trajectory => {
-          rightTrieRDD.packedRDD.mapPartitions(iter =>
-            getThresholdLocal(iter, Iterator(trajectory), distanceFunction, count, Double.MaxValue))
-            .collect().sorted.take(count).last
-        }).max
-      }).collect().max
+          .asInstanceOf[List[Trajectory]]
+      }).collect()
+
+      val threshold = trajs.map(par => {
+        rightTrieRDD.packedRDD.mapPartitions(iter =>
+          getThresholdLocal(iter, par.toIterator, distanceFunction, count, Double.MaxValue))
+          .collect().sorted.take(count).last
+      }).max
+
+//      val threshold = leftTrieRDD.packedRDD.map(packedPartition => {
+//        packedPartition.getSample(DITAConfigConstants.KNN_MAX_SAMPLING_RATE)
+//          .asInstanceOf[List[Trajectory]].map(trajectory => {
+//          rightTrieRDD.packedRDD.mapPartitions(iter =>
+//            getThresholdLocal(iter, Iterator(trajectory), distanceFunction, count, Double.MaxValue))
+//            .collect().sorted.take(count).last
+//        }).max
+//      }).collect().max
       threshold
     }
 
