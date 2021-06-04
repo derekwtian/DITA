@@ -81,10 +81,12 @@ object TrajectorySimilarityWithKNNAlgorithms {
     def search(sparkContext: SparkContext, query: Trajectory, trieRDD: TrieRDD,
                distanceFunction: TrajectorySimilarity,
                count: Int): RDD[(Trajectory, Double)] = {
+      val t0 = System.currentTimeMillis()
       val threshold = trieRDD.packedRDD.mapPartitions(iter =>
         getThresholdLocal(iter, Iterator(query), distanceFunction, count, Double.MaxValue))
         .collect().sorted.take(count).last
-      println(s"Threshold: $threshold")
+      val t1 = System.currentTimeMillis()
+      println(s"Threshold: $threshold, ${t1-t0}")
 
       val answerRDD = TrajectorySimilarityWithThresholdAlgorithms.DistributedSearch.search(
         sparkContext, query, trieRDD, distanceFunction, threshold)

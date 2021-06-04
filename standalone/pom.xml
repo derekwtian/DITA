@@ -81,7 +81,8 @@
                 </configuration>
             </plugin>
 
-            <!-- "package" command plugin -->
+            <!-- "package" command plugin.
+             use command 'mvn package' to get JAR file. -->
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>2.4.1</version>
